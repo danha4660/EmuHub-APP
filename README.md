@@ -172,12 +172,13 @@ Planned improvements include:
 
 ## License
 
-This project is open source.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-You are free to fork, modify, and contribute to the project.
+### Third-Party Components
 
-The developer does not own any of the included drivers or third-party components. All rights belong to their respective authors and maintainers.
+EmuHub does not own any of the drivers, emulation components, or other third-party software available through the application. All rights belong to their respective authors and maintainers.
 
+This application only provides a convenient interface for downloading and managing publicly available releases from their original sources.
 ---
 
 ## Support the Developer
