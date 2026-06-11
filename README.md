@@ -1,5 +1,7 @@
 # EmuHub – Turnip & DXVK Driver Manager for Android
 
+<img width="1254" height="1254" alt="ChatGPT Image Jun 11, 2026, 10_48_16 PM" src="https://github.com/user-attachments/assets/767978e8-2783-490a-8cf1-d3827cca5f48" />
+
 EmuHub is an open-source Android application that helps users download and manage GPU drivers (Turnip and Qualcomm) as well as PC emulation components (Wine, Proton, Box64, DXVK, FEXCore, VKD3D, and more) for Adreno-powered devices.
 
 The app automatically fetches the latest releases from GitHub, selects the newest available version, and allows users to switch between different driver sources when applicable.
