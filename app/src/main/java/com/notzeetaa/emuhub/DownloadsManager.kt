@@ -1,0 +1,89 @@
+package com.notzeetaa.emuhub
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
+import org.json.JSONArray
+import org.json.JSONObject
+
+private const val PREFS_NAME = "emu_hub_prefs"
+private const val KEY_COMPLETED_DOWNLOADS = "completed_downloads"
+
+object DownloadsManager {
+    data class ActiveDownload(val fileName: String, var progress: Int, val totalBytes: Long, var downloadedBytes: Long)
+    data class CompletedDownload(val fileName: String, val filePath: String, val sizeBytes: Long, val timestamp: Long) {
+        fun toJson(): JSONObject = JSONObject().apply {
+            put("fileName", fileName)
+            put("filePath", filePath)
+            put("sizeBytes", sizeBytes)
+            put("timestamp", timestamp)
+        }
+        companion object {
+            fun fromJson(json: JSONObject): CompletedDownload = CompletedDownload(
+                fileName = json.getString("fileName"),
+                filePath = json.getString("filePath"),
+                sizeBytes = json.getLong("sizeBytes"),
+                timestamp = json.getLong("timestamp")
+            )
+        }
+    }
+
+    private val _activeDownloads = mutableStateMapOf<String, ActiveDownload>()
+    private val _completedDownloads = mutableStateListOf<CompletedDownload>()
+    private lateinit var prefs: SharedPreferences
+
+    val activeDownloads: Map<String, ActiveDownload> get() = _activeDownloads
+    val completedDownloads: List<CompletedDownload> get() = _completedDownloads
+
+    fun init(context: Context) {
+        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        loadCompletedDownloads()
+    }
+
+    private fun saveCompletedDownloads() {
+        val jsonArray = JSONArray()
+        _completedDownloads.forEach { jsonArray.put(it.toJson()) }
+        prefs.edit().putString(KEY_COMPLETED_DOWNLOADS, jsonArray.toString()).apply()
+    }
+
+    private fun loadCompletedDownloads() {
+        val jsonString = prefs.getString(KEY_COMPLETED_DOWNLOADS, "[]") ?: "[]"
+        val jsonArray = JSONArray(jsonString)
+        _completedDownloads.clear()
+        for (i in 0 until jsonArray.length()) {
+            _completedDownloads.add(CompletedDownload.fromJson(jsonArray.getJSONObject(i)))
+        }
+    }
+
+    fun startDownload(fileName: String, totalBytes: Long) {
+        _activeDownloads[fileName] = ActiveDownload(fileName, 0, totalBytes, 0)
+    }
+
+    fun updateProgress(fileName: String, downloadedBytes: Long) {
+        _activeDownloads[fileName]?.let {
+            val progress = ((downloadedBytes.toDouble() / it.totalBytes) * 100).toInt()
+            _activeDownloads[fileName] = it.copy(progress = progress, downloadedBytes = downloadedBytes)
+        }
+    }
+
+    fun completeDownload(fileName: String, filePath: String, sizeBytes: Long) {
+        _activeDownloads.remove(fileName)
+        _completedDownloads.add(0, CompletedDownload(fileName, filePath, sizeBytes, System.currentTimeMillis()))
+        saveCompletedDownloads()
+    }
+
+    fun failDownload(fileName: String) {
+        _activeDownloads.remove(fileName)
+    }
+
+    fun removeCompleted(fileName: String) {
+        _completedDownloads.removeAll { it.fileName == fileName }
+        saveCompletedDownloads()
+    }
+
+    fun clearCompleted() {
+        _completedDownloads.clear()
+        saveCompletedDownloads()
+    }
+}
