@@ -49,7 +49,7 @@ import java.util.*
 private const val PREFS_NAME = "emu_hub_prefs"
 private const val KEY_COMPLETED_DOWNLOADS = "completed_downloads"
 
-// ---------- Downloads Manager with Persistence ----------
+// ---------- Downloads Manager ----------
 object DownloadsManager {
     data class ActiveDownload(val fileName: String, var progress: Int, val totalBytes: Long, var downloadedBytes: Long)
     data class CompletedDownload(val fileName: String, val filePath: String, val sizeBytes: Long, val timestamp: Long) {
@@ -148,6 +148,40 @@ class MainActivity : ComponentActivity() {
                 var showDownloads by remember { mutableStateOf(false) }
                 var refreshTrigger by remember { mutableIntStateOf(0) }
 
+                // Estados elevados para persistir entre ecrãs
+                var deviceInfo by remember { mutableStateOf<DeviceInfo?>(null) }
+                var isLoading by remember { mutableStateOf(true) }
+                var turnipSource by remember { mutableStateOf("StevenMXZ") }
+                var turnipReleases by remember { mutableStateOf<List<GithubRelease>>(emptyList()) }
+                var qualcommRelease by remember { mutableStateOf<GithubRelease?>(null) }
+                var components by remember { mutableStateOf<Map<String, List<Component>>>(emptyMap()) }
+
+                // Carregamento único (primeira composição e quando refreshTrigger muda)
+                LaunchedEffect(refreshTrigger) {
+                    withContext(Dispatchers.IO) {
+                        val info = DeviceInfo.collect(this@MainActivity)
+                        val comps = fetchComponentsFromUrl()
+                        val (_, qualcomm) = loadQualcommDriver()
+                        withContext(Dispatchers.Main) {
+                            deviceInfo = info
+                            components = comps
+                            qualcommRelease = qualcomm
+                        }
+                        val releases = fetchTurnipReleases(turnipSource, info.adrenoSeries)
+                        withContext(Dispatchers.Main) {
+                            turnipReleases = releases
+                            isLoading = false
+                        }
+                    }
+                }
+
+                // Forçar fonte para StevenMXZ se a série for 6xx ou 7xx
+                LaunchedEffect(deviceInfo?.adrenoSeries) {
+                    if (deviceInfo?.adrenoSeries == "6xx" || deviceInfo?.adrenoSeries == "7xx") {
+                        turnipSource = "StevenMXZ"
+                    }
+                }
+
                 if (showDownloads) {
                     DownloadsScreen(onBack = { showDownloads = false })
                 } else {
@@ -163,22 +197,29 @@ class MainActivity : ComponentActivity() {
                                 actions = {
                                     var isRefreshingLocal by remember { mutableStateOf(false) }
                                     val scope = rememberCoroutineScope()
-                                    IconButton(onClick = {
-                                        if (!isRefreshingLocal) {
-                                            scope.launch {
-                                                isRefreshingLocal = true
-                                                refreshTrigger++
-                                                delay(600)
-                                                isRefreshingLocal = false
+                                    IconButton(
+                                        onClick = {
+                                            if (!isRefreshingLocal) {
+                                                scope.launch {
+                                                    isRefreshingLocal = true
+                                                    refreshTrigger++
+                                                    delay(600)
+                                                    isRefreshingLocal = false
+                                                }
                                             }
                                         }
-                                    }) {
-                                        if (isRefreshingLocal) CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                        else Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                                    ) {
+                                        if (isRefreshingLocal) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        } else {
+                                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                                        }
                                     }
-                                    IconButton(onClick = {
-                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://notzeetaa.github.io/Donate-NotZeetaa/")))
-                                    }) {
+                                    IconButton(
+                                        onClick = {
+                                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://notzeetaa.github.io/Donate-NotZeetaa/")))
+                                        }
+                                    ) {
                                         Icon(Icons.Default.Favorite, contentDescription = "Donate")
                                     }
                                     IconButton(onClick = { showDownloads = true }) {
@@ -190,7 +231,15 @@ class MainActivity : ComponentActivity() {
                     ) { innerPadding ->
                         DriverHubScreen(
                             modifier = Modifier.padding(innerPadding),
-                            refreshTrigger = refreshTrigger
+                            deviceInfo = deviceInfo,
+                            isLoading = isLoading,
+                            turnipSource = turnipSource,
+                            turnipSources = listOf("StevenMXZ", "whitebelyash"),
+                            turnipReleases = turnipReleases,
+                            qualcommRelease = qualcommRelease,
+                            components = components,
+                            onSourceChange = { turnipSource = it },
+                            onRefresh = { refreshTrigger++ }  // apenas para forçar recarga se necessário (mas não usado internamente)
                         )
                     }
                 }
@@ -392,58 +441,25 @@ private fun formatDate(timestamp: Long): String {
     return sdf.format(Date(timestamp))
 }
 
-// ---------- Main DriverHubScreen ----------
+// ---------- Main DriverHubScreen (agora apenas UI, sem carregamentos) ----------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DriverHubScreen(
     modifier: Modifier = Modifier,
-    refreshTrigger: Int
+    deviceInfo: DeviceInfo?,
+    isLoading: Boolean,
+    turnipSource: String,
+    turnipSources: List<String>,
+    turnipReleases: List<GithubRelease>,
+    qualcommRelease: GithubRelease?,
+    components: Map<String, List<Component>>,
+    onSourceChange: (String) -> Unit,
+    onRefresh: () -> Unit
 ) {
     val context = LocalContext.current
 
-    var deviceInfo by remember { mutableStateOf<DeviceInfo?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-
-    var turnipSource by remember { mutableStateOf("StevenMXZ") }
-    val turnipSources = listOf("StevenMXZ", "whitebelyash")
-    var turnipReleases by remember { mutableStateOf<List<GithubRelease>>(emptyList()) }
-    var qualcommRelease by remember { mutableStateOf<GithubRelease?>(null) }
-    var components by remember { mutableStateOf<Map<String, List<Component>>>(emptyMap()) }
-
-    var isRefreshing by remember { mutableStateOf(false) }
-
-    LaunchedEffect(deviceInfo?.adrenoSeries) {
-        if (deviceInfo?.adrenoSeries == "6xx" || deviceInfo?.adrenoSeries == "7xx") {
-            turnipSource = "StevenMXZ"
-        }
-    }
-
-    LaunchedEffect(refreshTrigger) {
-        isRefreshing = true
-        withContext(Dispatchers.IO) {
-            val info = DeviceInfo.collect(context)
-            val comps = fetchComponentsFromUrl()
-            val (_, qualcomm) = loadQualcommDriver()
-            withContext(Dispatchers.Main) {
-                deviceInfo = info
-                components = comps
-                qualcommRelease = qualcomm
-                isLoading = false
-            }
-        }
-        delay(300)
-        isRefreshing = false
-    }
-
-    LaunchedEffect(turnipSource, deviceInfo?.adrenoSeries) {
-        if (deviceInfo != null) {
-            val releases = fetchTurnipReleases(turnipSource, deviceInfo!!.adrenoSeries)
-            turnipReleases = releases
-        }
-    }
-
     AnimatedVisibility(
-        visible = !isRefreshing,
+        visible = true,
         enter = fadeIn() + scaleIn(),
         exit = fadeOut() + scaleOut()
     ) {
@@ -470,7 +486,7 @@ fun DriverHubScreen(
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        if (isLoading && !isRefreshing) {
+                        if (isLoading) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                             Text("Loading information...")
                         } else {
@@ -498,7 +514,7 @@ fun DriverHubScreen(
                         icon = "🍃",
                         sources = turnipSources,
                         currentSource = turnipSource,
-                        onSourceChange = { turnipSource = it },
+                        onSourceChange = onSourceChange,
                         releases = turnipReleases,
                         onDownload = { release, asset ->
                             GlobalScope.launch { downloadAsset(context, release, asset) }
@@ -552,15 +568,6 @@ fun DriverHubScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-        }
-    }
-
-    if (isRefreshing) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
         }
     }
 }
