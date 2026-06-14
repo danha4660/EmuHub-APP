@@ -99,15 +99,17 @@ private suspend fun getOutputUri(context: Context, uniqueFileName: String): Uri?
 
 private suspend fun downloadFileWithProgress(context: Context, url: String, originalDesiredName: String) {
     withContext(Dispatchers.IO) {
-        // Determinar a pasta de destino (personalizada ou padrão) para gerar nome único
         val folderUriString = SettingsManager.getDownloadFolderUri()
         val folderUri = if (folderUriString != null) Uri.parse(folderUriString) else null
         val uniqueFileName = getUniqueFileName(context, folderUri, originalDesiredName)
-        Log.d(TAG, "Unique file name: $uniqueFileName (original: $originalDesiredName)")
 
-        // Iniciar o download ativo com o nome único (será mostrado na UI)
+        // Show a toast that download has started
         withContext(Dispatchers.Main) {
-            DownloadsManager.startDownload(uniqueFileName, 1L) // tamanho temporário, será atualizado
+            Toast.makeText(context, "Download started: $uniqueFileName", Toast.LENGTH_SHORT).show()
+        }
+
+        withContext(Dispatchers.Main) {
+            DownloadsManager.startDownload(uniqueFileName, 1L)
         }
 
         val client = OkHttpClient.Builder()
@@ -133,7 +135,6 @@ private suspend fun downloadFileWithProgress(context: Context, url: String, orig
             }
 
             val contentLength = response.body?.contentLength() ?: -1
-            // Atualizar o tamanho total para a barra de progresso
             if (contentLength > 0) {
                 withContext(Dispatchers.Main) {
                     DownloadsManager.startDownload(uniqueFileName, contentLength)

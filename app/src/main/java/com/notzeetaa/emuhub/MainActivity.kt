@@ -49,6 +49,9 @@ class MainActivity : ComponentActivity() {
                 var qualcommRelease by remember { mutableStateOf<GithubRelease?>(null) }
                 var components by remember { mutableStateOf<Map<String, List<Component>>>(emptyMap()) }
 
+                // Observe active downloads count for badge
+                val activeCount by remember { derivedStateOf { DownloadsManager.activeDownloads.size } }
+
                 LaunchedEffect(refreshTrigger) {
                     withContext(Dispatchers.IO) {
                         val info = DeviceInfo.collect(this@MainActivity)
@@ -111,8 +114,19 @@ class MainActivity : ComponentActivity() {
                                         ) {
                                             Icon(Icons.Default.Favorite, contentDescription = "Donate")
                                         }
-                                        IconButton(onClick = { showDownloads = true }) {
-                                            Icon(Icons.Default.Download, contentDescription = "Downloads")
+                                        // Downloads icon with badge
+                                        BadgedBox(
+                                            badge = {
+                                                if (activeCount > 0) {
+                                                    Badge {
+                                                        Text(activeCount.toString())
+                                                    }
+                                                }
+                                            }
+                                        ) {
+                                            IconButton(onClick = { showDownloads = true }) {
+                                                Icon(Icons.Default.Download, contentDescription = "Downloads")
+                                            }
                                         }
                                         IconButton(onClick = { showSettings = true }) {
                                             Icon(Icons.Default.Settings, contentDescription = "Settings")
