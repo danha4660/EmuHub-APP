@@ -25,9 +25,16 @@ suspend fun fetchGithubReleasesFromUrl(apiUrl: String): List<GithubRelease> = wi
             val obj = releasesArray.getJSONObject(idx)
             val tagName = obj.getString("tag_name")
             val name = obj.getString("name").ifEmpty { tagName }
-            val assets = (0 until obj.getJSONArray("assets").length()).map { assetIdx ->
-                val a = obj.getJSONArray("assets").getJSONObject(assetIdx)
-                GithubAsset(a.getString("name"), a.getString("browser_download_url"), a.getLong("size"))
+            val assetsArray = obj.getJSONArray("assets")
+            val assets = (0 until assetsArray.length()).map { assetIdx ->
+                val a = assetsArray.getJSONObject(assetIdx)
+                // Use optLong with default to avoid BigInteger
+                val size = a.optLong("size", 0L)
+                GithubAsset(
+                    name = a.getString("name"),
+                    downloadUrl = a.getString("browser_download_url"),
+                    sizeBytes = size
+                )
             }
             GithubRelease(tagName, name, assets)
         }.sortByVersionDescending { it.tagName }
@@ -77,7 +84,12 @@ suspend fun fetchComponentsFromUrl(): Map<String, List<Component>> = withContext
         val map = mutableMapOf<String, MutableList<Component>>()
         for (i in 0 until jsonArray.length()) {
             val obj = jsonArray.getJSONObject(i)
-            val comp = Component(obj.getString("type"), obj.getString("verName"), obj.getString("verCode"), obj.getString("remoteUrl"))
+            val comp = Component(
+                type = obj.getString("type"),
+                verName = obj.getString("verName"),
+                verCode = obj.getString("verCode"),
+                remoteUrl = obj.getString("remoteUrl")
+            )
             map.getOrPut(comp.type) { mutableListOf() }.add(comp)
         }
         map.forEach { (_, list) -> list.sortByVersionDescending { it.verName } }
@@ -85,16 +97,19 @@ suspend fun fetchComponentsFromUrl(): Map<String, List<Component>> = withContext
     } catch (e: Exception) { emptyMap() }
 }
 
-// Version sorting helper
+// Version sorting using Long to avoid BigInteger issues
 private fun versionCompare(v1: String, v2: String): Int {
-    fun parseVersion(v: String): List<Int> = v.split('.', '-', '_').map { it.toIntOrNull() ?: 0 }
+    fun parseVersion(v: String): List<Long> {
+        return v.split('.', '-', '_')
+            .mapNotNull { part -> part.toLongOrNull() }
+    }
     val parts1 = parseVersion(v1)
     val parts2 = parseVersion(v2)
     val maxLen = maxOf(parts1.size, parts2.size)
     for (i in 0 until maxLen) {
-        val num1 = parts1.getOrNull(i) ?: 0
-        val num2 = parts2.getOrNull(i) ?: 0
-        if (num1 != num2) return num1.compareTo(num2)
+        val num1 = parts1.getOrNull(i) ?: 0L
+        val num2 = parts2.getOrNull(i) ?: 0L
+        if (num1 != num2) return num1.compareTo(num2).toInt()
     }
     return 0
 }

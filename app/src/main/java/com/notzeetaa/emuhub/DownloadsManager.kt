@@ -6,26 +6,37 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 private const val PREFS_NAME = "emu_hub_prefs"
 private const val KEY_COMPLETED_DOWNLOADS = "completed_downloads"
 
 object DownloadsManager {
     data class ActiveDownload(val fileName: String, var progress: Int, val totalBytes: Long, var downloadedBytes: Long)
-    data class CompletedDownload(val fileName: String, val filePath: String, val sizeBytes: Long, val timestamp: Long) {
+    data class CompletedDownload(val id: String, val fileName: String, val filePath: String, val sizeBytes: Long, val timestamp: Long) {
         fun toJson(): JSONObject = JSONObject().apply {
+            put("id", id)
             put("fileName", fileName)
             put("filePath", filePath)
             put("sizeBytes", sizeBytes)
             put("timestamp", timestamp)
         }
         companion object {
-            fun fromJson(json: JSONObject): CompletedDownload = CompletedDownload(
-                fileName = json.getString("fileName"),
-                filePath = json.getString("filePath"),
-                sizeBytes = json.getLong("sizeBytes"),
-                timestamp = json.getLong("timestamp")
-            )
+            fun fromJson(json: JSONObject): CompletedDownload {
+                // Use optString para evitar exceção se o campo não existir
+                val id = json.optString("id", "")
+                val fileName = json.getString("fileName")
+                val filePath = json.getString("filePath")
+                val sizeBytes = json.optLong("sizeBytes", 0L)
+                val timestamp = json.optLong("timestamp", System.currentTimeMillis())
+                return CompletedDownload(
+                    id = if (id.isNotEmpty()) id else UUID.randomUUID().toString(),
+                    fileName = fileName,
+                    filePath = filePath,
+                    sizeBytes = sizeBytes,
+                    timestamp = timestamp
+                )
+            }
         }
     }
 
@@ -52,7 +63,8 @@ object DownloadsManager {
         val jsonArray = JSONArray(jsonString)
         _completedDownloads.clear()
         for (i in 0 until jsonArray.length()) {
-            _completedDownloads.add(CompletedDownload.fromJson(jsonArray.getJSONObject(i)))
+            val obj = jsonArray.getJSONObject(i)
+            _completedDownloads.add(CompletedDownload.fromJson(obj))
         }
     }
 
@@ -69,7 +81,8 @@ object DownloadsManager {
 
     fun completeDownload(fileName: String, filePath: String, sizeBytes: Long) {
         _activeDownloads.remove(fileName)
-        _completedDownloads.add(0, CompletedDownload(fileName, filePath, sizeBytes, System.currentTimeMillis()))
+        val uniqueId = UUID.randomUUID().toString()
+        _completedDownloads.add(0, CompletedDownload(uniqueId, fileName, filePath, sizeBytes, System.currentTimeMillis()))
         saveCompletedDownloads()
     }
 
@@ -77,8 +90,8 @@ object DownloadsManager {
         _activeDownloads.remove(fileName)
     }
 
-    fun removeCompleted(fileName: String) {
-        _completedDownloads.removeAll { it.fileName == fileName }
+    fun removeCompleted(id: String) {
+        _completedDownloads.removeAll { it.id == id }
         saveCompletedDownloads()
     }
 

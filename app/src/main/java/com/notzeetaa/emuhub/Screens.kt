@@ -3,8 +3,12 @@ package com.notzeetaa.emuhub
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,8 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.documentfile.provider.DocumentFile
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -81,18 +88,11 @@ fun DownloadsScreen(onBack: () -> Unit) {
                         var showDeleteDialog by remember { mutableStateOf(false) }
                         Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(text = file.fileName, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
-                                    IconButton(onClick = { showDeleteDialog = true }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete")
-                                    }
-                                }
+                                Text(text = file.fileName, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text("Size: ${formatBytes(file.sizeBytes)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("Path: ${getDisplayPath(file.filePath)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                val displayPath = remember(file.filePath) { getFullPath(file.filePath, context) }
+                                Text("Path: $displayPath", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("Date: ${formatDate(file.timestamp)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row {
@@ -126,6 +126,10 @@ fun DownloadsScreen(onBack: () -> Unit) {
                                     }) {
                                         Text("Share")
                                     }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(onClick = { showDeleteDialog = true }) {
+                                        Text("Delete")
+                                    }
                                 }
                             }
                         }
@@ -140,7 +144,7 @@ fun DownloadsScreen(onBack: () -> Unit) {
                                             scope.launch {
                                                 val deleted = deleteFile(context, file)
                                                 if (deleted) {
-                                                    DownloadsManager.removeCompleted(file.fileName)
+                                                    DownloadsManager.removeCompleted(file.id)
                                                 }
                                                 showDeleteDialog = false
                                             }
@@ -171,32 +175,67 @@ fun DownloadsScreen(onBack: () -> Unit) {
     }
 }
 
-private fun getDisplayPath(path: String): String {
-    return if (path.startsWith("content://")) {
-        "Downloaded via MediaStore (see Downloads folder)"
-    } else {
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
-        if (path.startsWith(downloadsDir)) {
-            "Downloads/${path.substringAfterLast('/')}"
-        } else {
-            path
+private fun getFullPath(filePath: String, context: android.content.Context): String {
+    if (!filePath.startsWith("content://")) {
+        return filePath
+    }
+
+    val uri = Uri.parse(filePath)
+
+    // Try to get folder using DocumentFile
+    val docFile = DocumentFile.fromSingleUri(context, uri)
+    if (docFile != null) {
+        val parent = docFile.parentFile
+        val folderName = parent?.name
+        val fileName = docFile.name ?: "unknown"
+        if (folderName != null) {
+            return "$folderName/$fileName"
         }
     }
+
+    // Manual parse of SAF URI path
+    val path = uri.path ?: ""
+    val treeIndex = path.indexOf("/tree/")
+    val documentIndex = path.indexOf("/document/")
+
+    if (treeIndex != -1 && documentIndex != -1 && documentIndex > treeIndex) {
+        val folderEncoded = path.substring(treeIndex + "/tree/".length, documentIndex)
+        val folderDecoded = Uri.decode(folderEncoded)
+        val folderPath = folderDecoded.replace("primary:", "")
+
+        val afterDocument = path.substring(documentIndex + "/document/".length)
+        val fileNameEncoded = afterDocument.substringAfterLast('/')
+        val fileName = Uri.decode(fileNameEncoded)
+
+        return "$folderPath/$fileName"
+    }
+
+    // Ultimate fallback
+    val fileName = uri.lastPathSegment?.let { Uri.decode(it) } ?: "file"
+    return "Unknown/$fileName"
 }
 
 private suspend fun deleteFile(context: android.content.Context, file: DownloadsManager.CompletedDownload): Boolean {
-    return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    return withContext(Dispatchers.IO) {
         try {
             if (file.filePath.startsWith("content://")) {
                 val uri = Uri.parse(file.filePath)
-                context.contentResolver.delete(uri, null, null) > 0
+                if (DocumentsContract.isDocumentUri(context, uri)) {
+                    DocumentsContract.deleteDocument(context.contentResolver, uri)
+                    true
+                } else if (DocumentsContract.isTreeUri(uri)) {
+                    val docFile = DocumentFile.fromTreeUri(context, uri)
+                    docFile?.delete() ?: false
+                } else {
+                    context.contentResolver.delete(uri, null, null) > 0
+                }
             } else {
                 val f = File(file.filePath)
                 f.exists() && f.delete()
             }
         } catch (e: Exception) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                Toast.makeText(context, "Error deleting file", Toast.LENGTH_SHORT).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Error deleting: ${e.message}", Toast.LENGTH_LONG).show()
             }
             false
         }
@@ -215,6 +254,102 @@ private fun formatBytes(bytes: Long): String {
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(onBack: () -> Unit) {
+    BackHandler { onBack() }
+
+    val context = LocalContext.current
+    var currentFolderUri by remember { mutableStateOf(SettingsManager.getDownloadFolderUri()) }
+    var displayPath by remember { mutableStateOf<String?>(null) }
+
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+        onResult = { uri ->
+            if (uri != null) {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                SettingsManager.setDownloadFolderUri(uri.toString())
+                currentFolderUri = uri.toString()
+                val docFile = DocumentFile.fromTreeUri(context, uri)
+                displayPath = docFile?.name ?: uri.path
+            }
+        }
+    )
+
+    LaunchedEffect(currentFolderUri) {
+        if (currentFolderUri != null) {
+            val uri = Uri.parse(currentFolderUri)
+            val docFile = DocumentFile.fromTreeUri(context, uri)
+            displayPath = docFile?.name ?: uri.path
+        } else {
+            displayPath = "Downloads (default)"
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Download Folder",
+                        fontSize = 18.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Current location: $displayPath",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { folderPickerLauncher.launch(null) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Choose folder")
+                    }
+                    if (currentFolderUri != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(
+                            onClick = {
+                                SettingsManager.clearDownloadFolder()
+                                currentFolderUri = null
+                                displayPath = "Downloads (default)"
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Reset to default (Downloads)")
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ---------- DriverHubScreen UI ----------
@@ -243,7 +378,6 @@ fun DriverHubScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Device Info Card
             item(key = "device_card") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -276,7 +410,6 @@ fun DriverHubScreen(
                 }
             }
 
-            // Turnip Driver Section
             if (turnipReleases.isNotEmpty()) {
                 item(key = "turnip_section") {
                     val showSourceSelector = deviceInfo?.adrenoSeries == "8xx"
@@ -299,7 +432,6 @@ fun DriverHubScreen(
                 }
             }
 
-            // Qualcomm Driver Section (only for Adreno 6xx/7xx)
             if (qualcommRelease != null && (deviceInfo?.adrenoSeries == "6xx" || deviceInfo?.adrenoSeries == "7xx")) {
                 qualcommRelease?.let { release ->
                     item(key = "qualcomm_section") {
@@ -316,7 +448,6 @@ fun DriverHubScreen(
                 }
             }
 
-            // Dynamic components (Wine, Proton, Box64, etc.)
             val order = listOf("Wine", "Proton", "Box64", "WOWBox64", "DXVK", "FEXCore", "VKD3D")
             order.forEach { type ->
                 val list = components[type] ?: emptyList()
@@ -333,7 +464,6 @@ fun DriverHubScreen(
                 }
             }
 
-            // Footer
             item(key = "footer") {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

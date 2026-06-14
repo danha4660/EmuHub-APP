@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         DownloadsManager.init(applicationContext)
+        SettingsManager.init(applicationContext)
 
         val appVersion = try {
             packageManager.getPackageInfo(packageName, 0).versionName
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             EmuHubTheme {
                 var showDownloads by remember { mutableStateOf(false) }
+                var showSettings by remember { mutableStateOf(false) }
                 var refreshTrigger by remember { mutableIntStateOf(0) }
 
                 var deviceInfo by remember { mutableStateOf<DeviceInfo?>(null) }
@@ -71,64 +73,66 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (showDownloads) {
-                    DownloadsScreen(onBack = { showDownloads = false })
-                } else {
-                    Scaffold(
-                        modifier = Modifier.fillMaxSize(),
-                        topBar = {
-                            TopAppBar(
-                                title = { Text(appTitle) },
-                                colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                actions = {
-                                    var isRefreshingLocal by remember { mutableStateOf(false) }
-                                    val scope = rememberCoroutineScope()
-                                    IconButton(
-                                        onClick = {
-                                            if (!isRefreshingLocal) {
-                                                scope.launch {
-                                                    isRefreshingLocal = true
-                                                    refreshTrigger++
-                                                    delay(600)
-                                                    isRefreshingLocal = false
+                when {
+                    showDownloads -> DownloadsScreen(onBack = { showDownloads = false })
+                    showSettings -> SettingsScreen(onBack = { showSettings = false })
+                    else -> {
+                        Scaffold(
+                            modifier = Modifier.fillMaxSize(),
+                            topBar = {
+                                TopAppBar(
+                                    title = { Text(appTitle) },
+                                    colors = TopAppBarDefaults.topAppBarColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    actions = {
+                                        var isRefreshingLocal by remember { mutableStateOf(false) }
+                                        val scope = rememberCoroutineScope()
+                                        IconButton(
+                                            onClick = {
+                                                if (!isRefreshingLocal) {
+                                                    scope.launch {
+                                                        isRefreshingLocal = true
+                                                        refreshTrigger++
+                                                        delay(600)
+                                                        isRefreshingLocal = false
+                                                    }
                                                 }
                                             }
+                                        ) {
+                                            if (isRefreshingLocal) CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                            else Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                                         }
-                                    ) {
-                                        if (isRefreshingLocal) {
-                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                        } else {
-                                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                                        IconButton(
+                                            onClick = {
+                                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://notzeetaa.github.io/Donate-NotZeetaa/")))
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.Favorite, contentDescription = "Donate")
+                                        }
+                                        IconButton(onClick = { showDownloads = true }) {
+                                            Icon(Icons.Default.Download, contentDescription = "Downloads")
+                                        }
+                                        IconButton(onClick = { showSettings = true }) {
+                                            Icon(Icons.Default.Settings, contentDescription = "Settings")
                                         }
                                     }
-                                    IconButton(
-                                        onClick = {
-                                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://notzeetaa.github.io/Donate-NotZeetaa/")))
-                                        }
-                                    ) {
-                                        Icon(Icons.Default.Favorite, contentDescription = "Donate")
-                                    }
-                                    IconButton(onClick = { showDownloads = true }) {
-                                        Icon(Icons.Default.Download, contentDescription = "Downloads")
-                                    }
-                                }
+                                )
+                            }
+                        ) { innerPadding ->
+                            DriverHubScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                deviceInfo = deviceInfo,
+                                isLoading = isLoading,
+                                turnipSource = turnipSource,
+                                turnipSources = listOf("StevenMXZ", "whitebelyash"),
+                                turnipReleases = turnipReleases,
+                                qualcommRelease = qualcommRelease,
+                                components = components,
+                                onSourceChange = { turnipSource = it }
                             )
                         }
-                    ) { innerPadding ->
-                        DriverHubScreen(
-                            modifier = Modifier.padding(innerPadding),
-                            deviceInfo = deviceInfo,
-                            isLoading = isLoading,
-                            turnipSource = turnipSource,
-                            turnipSources = listOf("StevenMXZ", "whitebelyash"),
-                            turnipReleases = turnipReleases,
-                            qualcommRelease = qualcommRelease,
-                            components = components,
-                            onSourceChange = { turnipSource = it }
-                        )
                     }
                 }
             }
